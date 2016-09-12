@@ -4,6 +4,7 @@
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.*;
 import java.io.*;
 import java.net.*;
 
@@ -22,7 +23,13 @@ public class ImgClient extends Thread{
 		frame.setVisible(true);
 
 		JButton button = new JButton("New Message");
-		button.addActionListener();
+		button.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				String name = JOptionPane.showInputDialog(frame, "What's your name?");
+			};
+		});
 
 		frame.getContentPane().add(button);
 	}
@@ -52,29 +59,38 @@ public class ImgClient extends Thread{
 		BufferedReader inFromUser = new BufferedReader( new InputStreamReader(System.in));
 		Socket clientSocket = new Socket("localhost", clientPort);
 		DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-		BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		DataInputStream inFromServer = new DataInputStream(clientSocket.getInputStream());
+		//BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		sentence = inFromUser.readLine();
 		outToServer.writeBytes(sentence + '\n');
-		modifiedSentence = inFromServer.readLine();
+		byte[] receiveData = new byte[5];
+		inFromServer.readFully(receiveData);
+		modifiedSentence = new String(receiveData);
 		System.out.println("FROM SERVER: " + modifiedSentence);
 		clientSocket.close();
 	}
 
 	private void UDPConnection() throws IOException {
-		BufferedReader inFromUser =
-				new BufferedReader(new InputStreamReader(System.in));
 		DatagramSocket clientSocket = new DatagramSocket();
 		InetAddress IPAddress = InetAddress.getByName("localhost");
+
+		String strInitial = "Hello, this is Matthew";
+
+		//sending data
 		byte[] sendData = new byte[1024];
-		byte[] receiveData = new byte[1024];
-		String sentence = inFromUser.readLine();
-		sendData = sentence.getBytes();
+		sendData = strInitial.getBytes();
 		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, clientPort);
 		clientSocket.send(sendPacket);
+
+		//receiving data
+		byte[] receiveData = new byte[1024];
 		DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 		clientSocket.receive(receivePacket);
-		String modifiedSentence = new String(receivePacket.getData());
-		System.out.println("FROM SERVER:" + modifiedSentence);
+
+		String strReceived = new String(receivePacket.getData());
+		System.out.println("<server>: " + strReceived);
+
+
 		clientSocket.close();
 	}
 }
