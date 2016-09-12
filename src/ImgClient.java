@@ -7,6 +7,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.*;
+import java.nio.ByteBuffer;
 
 public class ImgClient extends Thread{
 
@@ -59,13 +60,22 @@ public class ImgClient extends Thread{
 		BufferedReader inFromUser = new BufferedReader( new InputStreamReader(System.in));
 		Socket clientSocket = new Socket("localhost", clientPort);
 		DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-		DataInputStream inFromServer = new DataInputStream(clientSocket.getInputStream());
-		//BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		sentence = inFromUser.readLine();
 		outToServer.writeBytes(sentence + '\n');
-		byte[] receiveData = new byte[5];
+
+		ByteBuffer b = ByteBuffer.allocate(4);
+		b.putInt(0xAABBCCDD);
+		byte[] dataSize = b.array();
+		ByteBuffer buf = ByteBuffer;
+
+		//read first 4 bytes (full int)
+
+		DataInputStream inFromServer = new DataInputStream(clientSocket.getInputStream());
+		byte[] receiveData = new byte[1024];
 		inFromServer.readFully(receiveData);
 		modifiedSentence = new String(receiveData);
+
+
 		System.out.println("FROM SERVER: " + modifiedSentence);
 		clientSocket.close();
 	}

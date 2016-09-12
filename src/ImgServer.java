@@ -78,6 +78,8 @@ public class ImgServer extends Thread{
 			DatagramPacket sendPacket =
 					new DatagramPacket(sendData, sendData.length, IPAddress, port);
 			serverSocket.send(sendPacket);
+
+			serverSocket.close();
 		}
 	}
 }
