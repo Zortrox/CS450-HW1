@@ -1,8 +1,9 @@
-import javax.swing.*;
-
 /**
  * Created by Zortrox on 9/12/2016.
  */
+
+
+
 public class Main {
 
 	public static void main(String[] args) {
@@ -10,8 +11,8 @@ public class Main {
 		boolean useUDP = false;
 		int port = 6789;
 
-		ImgClient client = new ImgClient(useUDP, port);
-		ImgServer server = new ImgServer(useUDP, port);
+		NetObject client = new NetObject(NetObject.NET_CLIENT, useUDP, port, "localhost");
+		NetObject server = new NetObject(NetObject.NET_SERVER, useUDP, port, "localhost");
 
 		client.start();
 		server.start();
