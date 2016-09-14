@@ -4,6 +4,7 @@
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.*;
 import java.net.*;
 
 public class NetClient extends NetObject{
@@ -45,16 +46,25 @@ public class NetClient extends NetObject{
 		msg.mData = strInitial.getBytes();
 		msg.mType = MSG_INIT;
 		msg.mIP = IPAddress;
+		msg.mPort = mPort;
 
-		//sending data
+		//initial send/receive
 		sendUDPData(clientSocket, msg);
 		System.out.println(strInitial);
-
-		//receiving data
 		receiveUDPData(clientSocket, msg);
-
 		String strReceived = new String(msg.mData);
 		System.out.println("<server>: " + strReceived);
+
+		//image send/receive
+		String filename = "/pokemon-imgs/1.png";
+		msg.mData = filename.getBytes();
+		msg.mType = MSG_FILE;
+		msg.mIP = IPAddress;
+		msg.mPort = mPort;
+		sendUDPData(clientSocket, msg);
+		System.out.println("Requested: " + filename);
+		boolean t = new File(filePath + "/downloaded").mkdirs();
+		receiveFile(clientSocket, msg, "/downloaded/bulb.png");
 
 		clientSocket.close();
 	}

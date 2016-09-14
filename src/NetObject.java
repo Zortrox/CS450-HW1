@@ -8,8 +8,9 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.nio.file.*;
+import java.util.*;
+import java.util.concurrent.*;
 
 class Message {
 	byte mType = 0;
@@ -23,29 +24,64 @@ public class NetObject extends Thread{
 	boolean mUDP;
 	int mPort;
 	String mIP;
+	String filePath;
+
+	//packet size in bytes
+	static final int PACKET_SIZE = 1024;
 
 	//message types
-	static final byte MSG_INIT = 0;
-	static final byte MSG_FILE = 1;
-	static final byte MSG_SIZE = 2;
-	static final byte MSG_TEXT = 3;
-	static final byte MSG_STOP = 4;
+	static final byte MSG_INIT = 0;	//init connection
+	static final byte MSG_TEXT = 1;	//sending text
+	static final byte MSG_FILE = 2;	//sending file
 
-	NetObject() { }
+	NetObject() {
+		filePath = new File("").getAbsolutePath();
+	}
 
 	public void run() {	}
 
+	void processUDPData(DatagramPacket packet, Message msg) {
+		//store packet data
+		msg.mData = packet.getData();
+
+		//get size of receiving data
+		byte[] byteSize = new byte[4];
+		ByteBuffer bufSize = ByteBuffer.wrap(Arrays.copyOfRange(msg.mData, 0, byteSize.length));
+		int dataSize = bufSize.getInt();
+
+		//get type of receiving data
+		msg.mType = msg.mData[byteSize.length];
+
+		//get sent data from packet
+		msg.mData = Arrays.copyOfRange(msg.mData, byteSize.length + 1, byteSize.length + 1 + dataSize);
+
+		//get location from packet
+		msg.mPort = packet.getPort();
+		msg.mIP = packet.getAddress();
+	}
+
 	void receiveUDPData(DatagramSocket socket, Message msg) throws Exception{
-		msg.mData = new byte[1024];
+		msg.mData = new byte[PACKET_SIZE];
 		DatagramPacket receivePacket = new DatagramPacket(msg.mData, msg.mData.length);
 		socket.receive(receivePacket);
 
-		msg.mPort = receivePacket.getPort();
-		msg.mIP = receivePacket.getAddress();
+		processUDPData(receivePacket, msg);
 	}
 
 	void sendUDPData(DatagramSocket socket, Message msg) throws Exception{
-		DatagramPacket sendPacket = new DatagramPacket(msg.mData, msg.mData.length, msg.mIP, mPort);
+		//get size of data
+		ByteBuffer b = ByteBuffer.allocate(4);
+		b.putInt(msg.mData.length);
+		byte[] dataSize = b.array();
+
+		//create array of all data
+		byte[] data = new byte[dataSize.length + 1 + msg.mData.length];
+		System.arraycopy(dataSize, 0, data, 0, dataSize.length);
+		data[dataSize.length] = msg.mType;
+		System.arraycopy(msg.mData, 0, data, dataSize.length + 1, msg.mData.length);
+
+		//send data
+		DatagramPacket sendPacket = new DatagramPacket(data, data.length, msg.mIP, msg.mPort);
 		socket.send(sendPacket);
 	}
 
@@ -80,5 +116,42 @@ public class NetObject extends Thread{
 
 		//send data
 		outData.write(msg.mData);
+	}
+
+	void sendFile(Object socket, Message msg, String filename) {
+		Path file = Paths.get(filePath + filename);
+		try {
+			byte[] fileData = Files.readAllBytes(file);
+
+			msg.mType = MSG_FILE;
+			msg.mData = fileData;
+
+			if (mUDP) {
+				sendUDPData((DatagramSocket) socket, msg);
+			} else {
+				sendTCPData((Socket) socket, msg);
+			}
+
+		}
+		catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+
+	void receiveFile(Object socket, Message msg, String filename) {
+		Path file = Paths.get(filePath + filename);
+
+		try {
+			if (mUDP) {
+				receiveUDPData((DatagramSocket) socket, msg);
+			} else {
+				receiveTCPData((Socket) socket, msg);
+			}
+
+			Files.write(file, msg.mData);
+		}
+		catch (Exception ex) {
+			ex.printStackTrace();
+		}
 	}
 }

@@ -52,7 +52,7 @@ public class NetServer extends NetObject {
 					System.out.println("<server>: Listening for packets.");
 
 					while (true) {
-						byte[] receiveData = new byte[1024];
+						byte[] receiveData = new byte[PACKET_SIZE];
 						DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 						serverSocket.receive(receivePacket);
 
@@ -69,16 +69,29 @@ public class NetServer extends NetObject {
 		{
 			//receive data
 			DatagramPacket receivePacket = qPackets.take();
-			InetAddress IPAddress = receivePacket.getAddress();
-			int port = receivePacket.getPort();
-			String strInitial = new String(receivePacket.getData());
+			System.out.println("<server>: New Packet.");
+			Message msg = new Message();
+			//process packet into the message
+			processUDPData(receivePacket, msg);
 
-			//send data
-			String strToSend = "Message received, " + strInitial.substring(strInitial.lastIndexOf(' ') + 1);
-			byte[] sendData = strToSend.getBytes();
-			DatagramPacket sendPacket =
-					new DatagramPacket(sendData, sendData.length, IPAddress, port);
-			serverSocket.send(sendPacket);
+			switch (msg.mType) {
+				case MSG_INIT:
+					String strInitial = new String(msg.mData);
+					msg.mData = ("Message received, " +
+							strInitial.substring(strInitial.lastIndexOf(' ') + 1)).getBytes();
+					sendUDPData(serverSocket, msg);
+					break;
+				case MSG_TEXT:
+					String recMsg = new String(msg.mData);
+					msg.mData = recMsg.toUpperCase().getBytes();
+					sendUDPData(serverSocket, msg);
+					break;
+				case MSG_FILE:
+					String filename = new String(msg.mData);
+					sendFile(serverSocket, msg, filename);
+					System.out.println("Sent: " + filename);
+					break;
+			}
 		}
 	}
 
@@ -107,24 +120,28 @@ public class NetServer extends NetObject {
 		while (true)
 		{
 			Socket clientSocket = qSockets.take();
-
 			System.out.println("<server>: New connection.");
 
 			Message msg = new Message();
 			receiveTCPData(clientSocket, msg);
-			String msgReceive = new String(msg.mData);
 
-			byte[] dataSend;
-			if (msg.mType == MSG_INIT) {
-				String msgSend = "Message received, " + msgReceive.substring(msgReceive.lastIndexOf(' ') + 1);
-				dataSend = msgSend.getBytes();
-			} else {
-				dataSend = msgReceive.toUpperCase().getBytes();
+			switch (msg.mType) {
+				case MSG_INIT:
+					String strInitial = new String(msg.mData);
+					msg.mData = ("Message received, " +
+							strInitial.substring(strInitial.lastIndexOf(' ') + 1)).getBytes();
+					sendTCPData(clientSocket, msg);
+					break;
+				case MSG_TEXT:
+					String recMsg = new String(msg.mData);
+					msg.mData = recMsg.toUpperCase().getBytes();
+					sendTCPData(clientSocket, msg);
+					break;
+				case MSG_FILE:
+					String filename = new String(msg.mData);
+					sendFile(clientSocket, msg, filename);
+					break;
 			}
-
-			msg.mData = dataSend;
-			msg.mType = MSG_TEXT;
-			sendTCPData(clientSocket, msg);
 		}
 	}
 }

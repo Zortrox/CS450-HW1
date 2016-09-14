@@ -12,13 +12,18 @@ public class ServerProgram {
 		NetServer server = new NetServer(useUDP, port, "localhost");
 		server.start();
 
+		try { Thread.sleep(1000); }
+		catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
 		NetClient client1 = new NetClient(useUDP, port, "localhost");
 		client1.start();
-		NetClient client2 = new NetClient(useUDP, port, "localhost");
+		/*NetClient client2 = new NetClient(useUDP, port, "localhost");
 		client2.start();
 		NetClient client3 = new NetClient(useUDP, port, "localhost");
 		client3.start();
 		NetClient client4 = new NetClient(useUDP, port, "localhost");
-		client4.start();
+		client4.start();*/
 	}
 }
