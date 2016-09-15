@@ -4,10 +4,17 @@
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
+import java.lang.reflect.Array;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.Random;
 
 public class NetClient extends NetObject{
+
+	ArrayList<String> strPokeNames = new ArrayList<>();
 
 	NetClient(boolean UDP, int port, String IP) {
 		mUDP = UDP;
@@ -16,7 +23,147 @@ public class NetClient extends NetObject{
 
 		JFrame frame = new JFrame("Client");
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		frame.setSize(new Dimension(300, 200));
+		frame.setSize(new Dimension(250, 100));
+
+		//populate names from file
+		try (BufferedReader br = new BufferedReader(new FileReader("pokemon-names.txt"))) {
+			for (String line; (line = br.readLine()) != null; ) {
+				strPokeNames.add(line);
+			}
+			br.close();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		JComboBox boxNames = new JComboBox(strPokeNames.toArray());
+		boxNames.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JComboBox cb = (JComboBox)e.getSource();
+				String fnImage = "/pokemon-imgs/" + (cb.getSelectedIndex()+1) + ".png";
+				String fnText = "/pokemon-types/" + (cb.getSelectedIndex()+1) + ".txt";
+
+				try {
+					Object clientSocket = null;
+
+					if (mUDP) clientSocket = new DatagramSocket();
+					InetAddress IPAddress = InetAddress.getByName(mIP);
+
+					//setup message address
+					Message msg = new Message();
+					msg.mIP = IPAddress;
+					msg.mPort = mPort;
+
+					if (!mUDP) clientSocket = new Socket(mIP, mPort);
+					//request image file
+					msg.mData = fnImage.getBytes();
+					msg.mType = MSG_FILE;
+					if (mUDP) {
+						sendUDPData((DatagramSocket) clientSocket, msg);
+					} else {
+						sendTCPData((Socket) clientSocket, msg);
+					}
+					System.out.println("Requested: " + fnImage);
+
+					//save image to directory
+					new File(filePath + "/downloaded/img").mkdirs();
+					receiveFile(clientSocket, msg, "/downloaded/img/" + cb.getSelectedItem() + ".png");
+					if (!mUDP) ((Socket)clientSocket).close();
+
+					if (!mUDP) clientSocket = new Socket(mIP, mPort);
+					//request text file
+					msg.mData = fnText.getBytes();
+					msg.mType = MSG_FILE;
+					if (mUDP) {
+						sendUDPData((DatagramSocket) clientSocket, msg);
+					} else {
+						sendTCPData((Socket) clientSocket, msg);
+					}
+					System.out.println("Requested: " + fnText);
+
+					//save text to directory
+					new File(filePath + "/downloaded/type").mkdirs();
+					receiveFile(clientSocket, msg, "/downloaded/type/" + cb.getSelectedItem() + ".txt");
+					if (!mUDP) ((Socket)clientSocket).close();
+
+					if (mUDP) {
+						((DatagramSocket) clientSocket).close();
+					} else {
+						((Socket) clientSocket).close();
+					}
+				}
+				catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+		});
+		frame.add(boxNames, BorderLayout.NORTH);
+		boxNames.setVisible(true);
+
+		JButton btnMassRequest = new JButton("Mass Request");
+		btnMassRequest.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				Random rand = new Random();
+
+				try {
+					Object clientSocket = null;
+
+					if (mUDP) clientSocket = new DatagramSocket();
+					InetAddress IPAddress = InetAddress.getByName(mIP);
+
+					//setup message address
+					Message msg = new Message();
+					msg.mIP = IPAddress;
+					msg.mPort = mPort;
+
+					for (int i = 0; i < 50; i++) {
+						int randomPoke = rand.nextInt(strPokeNames.size()) + 1;
+						String fnImage = "/pokemon-imgs/" + randomPoke + ".png";
+						String fnText = "/pokemon-types/" + randomPoke + ".txt";
+
+						if (!mUDP) clientSocket = new Socket(mIP, mPort);
+						//request image file
+						msg.mData = fnImage.getBytes();
+						msg.mType = MSG_FILE;
+						if (mUDP) {
+							sendUDPData((DatagramSocket) clientSocket, msg);
+						} else {
+							sendTCPData((Socket) clientSocket, msg);
+						}
+						System.out.println("Requested: " + fnImage);
+
+						//save image to directory
+						new File(filePath + "/downloaded/img").mkdirs();
+						receiveFile(clientSocket, msg, "/downloaded/img/" + strPokeNames.get(randomPoke-1) + ".png");
+						if (!mUDP) ((Socket)clientSocket).close();
+
+						if (!mUDP) clientSocket = new Socket(mIP, mPort);
+						//request text file
+						msg.mData = fnText.getBytes();
+						msg.mType = MSG_FILE;
+						if (mUDP) {
+							sendUDPData((DatagramSocket) clientSocket, msg);
+						} else {
+							sendTCPData((Socket) clientSocket, msg);
+						}
+						System.out.println("Requested: " + fnText);
+
+						//save text to directory
+						new File(filePath + "/downloaded/type").mkdirs();
+						receiveFile(clientSocket, msg, "/downloaded/type/" + strPokeNames.get(randomPoke-1) + ".txt");
+						if (!mUDP) ((Socket)clientSocket).close();
+					}
+
+					if (mUDP) ((DatagramSocket) clientSocket).close();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
+		});
+		frame.add(btnMassRequest, BorderLayout.SOUTH);
+		btnMassRequest.setVisible(true);
+
 		frame.setVisible(true);
 	}
 
@@ -54,17 +201,6 @@ public class NetClient extends NetObject{
 		receiveUDPData(clientSocket, msg);
 		String strReceived = new String(msg.mData);
 		System.out.println("<server>: " + strReceived);
-
-		//image send/receive
-		String filename = "/pokemon-imgs/1.png";
-		msg.mData = filename.getBytes();
-		msg.mType = MSG_FILE;
-		msg.mIP = IPAddress;
-		msg.mPort = mPort;
-		sendUDPData(clientSocket, msg);
-		System.out.println("Requested: " + filename);
-		boolean t = new File(filePath + "/downloaded").mkdirs();
-		receiveFile(clientSocket, msg, "/downloaded/bulb.png");
 
 		clientSocket.close();
 	}
@@ -107,21 +243,5 @@ public class NetClient extends NetObject{
 		String msgReceive = new String(msg.mData);
 		System.out.println("<server>: " + msgReceive);
 		socket.close();
-
-		for (int i=0; i<10; i++) {
-			socket = new Socket(mIP, mPort);
-			//custom message
-			msgSend = "test " + i;//JOptionPane.showInputDialog("What is your message?");
-			System.out.println(msgSend);
-
-			msg = new Message();
-			msg.mData = msgSend.getBytes();
-			msg.mType = MSG_TEXT;
-			sendTCPData(socket, msg);
-			receiveTCPData(socket, msg);
-			msgReceive = new String(msg.mData);
-			System.out.println("<server>: " + msgReceive);
-			socket.close();
-		}
 	}
 }

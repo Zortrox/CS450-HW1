@@ -30,9 +30,9 @@ public class NetObject extends Thread{
 	static final int PACKET_SIZE = 1024;
 
 	//message types
-	static final byte MSG_INIT = 0;	//init connection
-	static final byte MSG_TEXT = 1;	//sending text
-	static final byte MSG_FILE = 2;	//sending file
+	static final byte MSG_INIT 		= 0; //init connection
+	static final byte MSG_TEXT 		= 1; //sending text
+	static final byte MSG_FILE 		= 2; //sending file
 
 	NetObject() {
 		filePath = new File("").getAbsolutePath();
@@ -116,6 +116,7 @@ public class NetObject extends Thread{
 
 		//send data
 		outData.write(msg.mData);
+		outData.flush();
 	}
 
 	void sendFile(Object socket, Message msg, String filename) {

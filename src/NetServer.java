@@ -19,10 +19,10 @@ public class NetServer extends NetObject {
 		mPort = port;
 		mIP = IP;
 
-		JFrame frame = new JFrame("Server");
-		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		frame.setSize(new Dimension(300, 200));
-		frame.setVisible(true);
+		//JFrame frame = new JFrame("Server");
+		//frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+		//frame.setSize(new Dimension(300, 200));
+		//frame.setVisible(true);
 	}
 
 	public void run() {
@@ -136,10 +136,12 @@ public class NetServer extends NetObject {
 					String recMsg = new String(msg.mData);
 					msg.mData = recMsg.toUpperCase().getBytes();
 					sendTCPData(clientSocket, msg);
+					System.out.println("<client>: " + recMsg);
 					break;
 				case MSG_FILE:
 					String filename = new String(msg.mData);
 					sendFile(clientSocket, msg, filename);
+					System.out.println("Sent: " + filename);
 					break;
 			}
 		}
